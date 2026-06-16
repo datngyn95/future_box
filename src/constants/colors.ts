@@ -1,67 +1,76 @@
 // FutureBoxes Design System — Color Tokens
+//
+// MIGRATED to Dark Theme (design/uiuxguides.md): `Colors` giờ là FACADE
+// ánh xạ từ `ThemeColors` (src/constants/theme.ts) — nguồn chân lý duy nhất.
+// Giữ nguyên toàn bộ tên key cũ để mọi màn hình tự động dùng token dark,
+// không cần đổi call-site. Box-type colors gộp về 1 accent cam (single accent).
+
+import { ThemeColors } from './theme';
+
+const T = ThemeColors;
 
 export const Colors = {
-  // Box type colors
+  // Box type colors — gộp về accent duy nhất, phân biệt bằng icon
   boxType: {
-    message: '#5B8DEF',
-    messageBg: '#EEF4FF',
-    goal: '#4CAF82',
-    goalBg: '#EDFAF4',
-    memory: '#9B7FD4',
-    memoryBg: '#F3EEFF',
-    decision: '#F0944D',
-    decisionBg: '#FFF4EB',
+    message: T.accent,
+    messageBg: T.accentSoft,
+    goal: T.accent,
+    goalBg: T.accentSoft,
+    memory: T.accent,
+    memoryBg: T.accentSoft,
+    decision: T.accent,
+    decisionBg: T.accentSoft,
   },
 
-  // Primary brand
-  primary: '#5B8DEF',
-  primaryLight: '#EEF4FF',
-  primaryDark: '#3A6FD8',
+  // Primary brand → accent cam
+  primary: T.accent,
+  primaryLight: T.accentSoft,
+  primaryDark: T.accentPressed,
 
   // Backgrounds
-  background: '#F8F9FC',
-  surface: '#FFFFFF',
-  surfaceSecondary: '#F2F4F8',
-  surfaceElevated: '#FFFFFF',
+  background: T.background,
+  surface: T.surfaceSolid,
+  surfaceSecondary: T.backgroundElevated,
+  surfaceElevated: T.surfaceSolid,
 
   // Text
-  textPrimary: '#1A1D23',
-  textSecondary: '#6B7280',
-  textMuted: '#9CA3AF',
-  textOnColor: '#FFFFFF',
+  textPrimary: T.textPrimary,
+  textSecondary: T.textSecondary,
+  textMuted: T.textMuted,
+  textOnColor: T.textOnAccent,
 
   // Semantic
-  success: '#4CAF82',
-  successLight: '#EDFAF4',
-  warning: '#F0944D',
-  warningLight: '#FFF4EB',
-  warningBg: '#FFF8E1',
-  warningText: '#92600A',
-  danger: '#EF4444',
-  dangerLight: '#FEE2E2',
+  success: T.success,
+  successLight: 'rgba(60,203,127,0.14)',
+  warning: T.warning,
+  warningLight: 'rgba(242,176,31,0.14)',
+  warningBg: 'rgba(242,176,31,0.14)',
+  warningText: T.warning,
+  danger: T.danger,
+  dangerLight: 'rgba(255,90,90,0.14)',
 
   // Section headers
-  sectionReadyToOpen: '#EF4444',
-  sectionLocked: '#6B7280',
-  sectionOpened: '#9CA3AF',
+  sectionReadyToOpen: T.accent,
+  sectionLocked: T.textMuted,
+  sectionOpened: T.textMuted,
 
   // Borders
-  borderLight: '#E5E7EB',
-  borderMedium: '#D1D5DB',
+  borderLight: T.borderGlass,
+  borderMedium: T.borderGlassStrong,
 
   // Overlay
-  overlay: 'rgba(0,0,0,0.5)',
-  overlayLight: 'rgba(0,0,0,0.08)',
+  overlay: T.overlay,
+  overlayLight: 'rgba(255,255,255,0.08)',
 
-  // Card shadow (for StyleSheet shadow*)
+  // Card shadow (cho StyleSheet shadow*)
   shadow: '#000000',
 
   // Badge
-  badgeReady: '#EF4444',
-  badgeOpened: '#9CA3AF',
+  badgeReady: T.accent,
+  badgeOpened: T.textMuted,
 
   // Progress bar track
-  progressTrack: '#E5E7EB',
+  progressTrack: T.trackOff,
 
   // Transparent
   transparent: 'transparent',

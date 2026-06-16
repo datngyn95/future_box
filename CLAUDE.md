@@ -23,6 +23,7 @@
 | File system | **expo-file-system** ~19.0.23 (lưu ảnh vào documentDirectory) |
 | Icons | **@expo/vector-icons** ^15.0.3 (Ionicons) |
 | Gradient | **expo-linear-gradient** ~15.0.8 |
+| Blur (glassmorphism) | **expo-blur** ~15.0.8 — frosted glass cards |
 | Crypto | **expo-crypto** ~15.0.9 (UUID generation + SHA-256 PIN hash) |
 | Secure store | **expo-secure-store** ~15.0.8 (lưu PIN hash) |
 | Biometric | **expo-local-authentication** ~17.0.8 (Face ID / vân tay) |
@@ -59,7 +60,8 @@
 │   │   ├── boxTypes.ts         # BOX_TYPE_CONFIG (icon, màu, placeholder, câu hỏi mặc định)
 │   │   ├── colors.ts           # Màu sắc toàn app + màu theo loại hộp
 │   │   ├── spacing.ts          # Spacing constants
-│   │   └── typography.ts       # Typography constants
+│   │   ├── typography.ts       # Typography constants
+│   │   └── theme.ts            # Dark theme tokens (uiuxguides.md): colors, text, motion, blur
 │   ├── components/
 │   │   ├── BoxIcon.tsx         # Component icon hộp dùng chung
 │   │   ├── AppLockScreen.tsx   # PIN pad overlay (F-18) — auto-trigger biometric
@@ -75,7 +77,7 @@
 │       └── boxStore.tsx        # BoxProvider (Context), useBoxStore() hook, reducer
 │
 ├── assets/                     # App icons, splash screen
-├── design/                     # Tài liệu thiết kế (screens.md, flows/, database/schema.md)
+├── design/                     # Tài liệu thiết kế (screens.md, flows/, database/schema.md, uiuxguides.md)
 ├── PRD.md                      # Product Requirements Document v1.1
 ├── AGENTS.md                   # Hướng dẫn cho AI agents
 └── CLAUDE.md                   # File này
