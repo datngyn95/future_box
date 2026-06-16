@@ -1,6 +1,7 @@
 // Home / Box List Screen — FutureBoxes
 // Hiển thị tất cả hộp thời gian phân theo 3 nhóm:
 // Sẵn sàng mở → Đang khóa → Đã mở
+// UI: Dark Glassmorphism (design/uiuxguides.md)
 
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
@@ -10,15 +11,17 @@ import {
   TouchableOpacity,
   ScrollView,
   Pressable,
-  Platform,
   Dimensions,
   AppState,
   AppStateStatus,
   TextInput,
 } from 'react-native';
-import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
+import { BlurView } from 'expo-blur';
+import { LinearGradient } from 'expo-linear-gradient';
+import { StatusBar } from 'expo-status-bar';
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
@@ -32,9 +35,10 @@ import Animated, {
 } from 'react-native-reanimated';
 
 import { Colors } from '../../src/constants/colors';
+import { ThemeColors, BlurIntensity, GlassShadow } from '../../src/constants/theme';
 import { Spacing, Shadow, Radius } from '../../src/constants/spacing';
 import { FontSize, FontWeight, LetterSpacing } from '../../src/constants/typography';
-import { Box, BoxType } from '../../src/types/box';
+import { Box } from '../../src/types/box';
 import { getBoxTypeConfig } from '../../src/constants/boxTypes';
 import { BoxIcon } from '../../src/components/BoxIcon';
 import { useBoxStore, getBoxStatus } from '../../src/store/boxStore';
@@ -42,6 +46,7 @@ import { useBoxStore, getBoxStatus } from '../../src/store/boxStore';
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const FAB_SIZE = 56;
 const FAB_BOTTOM_OFFSET = 24;
+const CARD_BLUR = BlurIntensity.card;
 
 // ─── Helper Functions ─────────────────────────────────────────────────────────
 
@@ -66,6 +71,24 @@ function formatDate(dateString: string): string {
   return date.toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric' });
 }
 
+// ─── Glass surface ────────────────────────────────────────────────────────────
+// Lớp kính dùng chung: BlurView + tint trắng mờ + viền sáng. Đặt làm nền tuyệt đối,
+// nội dung render đè lên trên. Container cha cần overflow:'hidden' + borderRadius.
+
+function GlassFill({ intensity = CARD_BLUR }: { intensity?: number }) {
+  return (
+    <>
+      <BlurView
+        intensity={intensity}
+        tint="dark"
+        experimentalBlurMethod="dimezisBlurView"
+        style={StyleSheet.absoluteFill}
+      />
+      <View style={styles.glassTint} pointerEvents="none" />
+    </>
+  );
+}
+
 // ─── Sub-components ───────────────────────────────────────────────────────────
 
 // Card "Sẵn sàng mở" với pulse animation
@@ -76,16 +99,17 @@ function ReadyToOpenCard({ box, onPress }: { box: Box; onPress: () => void }) {
   useEffect(() => {
     pulseOpacity.value = withRepeat(
       withSequence(
-        withTiming(0.85, { duration: 1000, easing: Easing.inOut(Easing.sin) }),
-        withTiming(1.0, { duration: 1000, easing: Easing.inOut(Easing.sin) }),
+        withTiming(0.4, { duration: 900, easing: Easing.inOut(Easing.sin) }),
+        withTiming(1.0, { duration: 900, easing: Easing.inOut(Easing.sin) }),
       ),
       -1,
       false,
     );
   }, []);
 
-  const pulseStyle = useAnimatedStyle(() => ({
+  const dotPulseStyle = useAnimatedStyle(() => ({
     opacity: pulseOpacity.value,
+    transform: [{ scale: interpolate(pulseOpacity.value, [0.4, 1], [1, 1.35]) }],
   }));
 
   const scale = useSharedValue(1);
@@ -101,14 +125,15 @@ function ReadyToOpenCard({ box, onPress }: { box: Box; onPress: () => void }) {
   };
 
   return (
-    <Animated.View style={pressStyle}>
+    <Animated.View style={[pressStyle, styles.readyShadow]}>
       <Pressable
         onPress={onPress}
         onPressIn={handlePressIn}
         onPressOut={handlePressOut}
-        style={[styles.readyCard, { borderLeftColor: config.color }]}
+        style={[styles.glassCard, styles.readyCard]}
       >
-        <Animated.View style={[styles.readyCardInner, pulseStyle]}>
+        <GlassFill />
+        <View style={styles.cardRow}>
           <View style={styles.cardLeft}>
             <BoxIcon boxType={box.boxType} size={44} showLockOverlay={false} />
           </View>
@@ -117,22 +142,20 @@ function ReadyToOpenCard({ box, onPress }: { box: Box; onPress: () => void }) {
               {box.title || config.label}
             </Text>
             <View style={styles.readyToOpenRow}>
-              <View style={[styles.readyDot, { backgroundColor: config.color }]} />
-              <Text style={[styles.readyToOpenText, { color: config.color }]}>
-                Sẵn sàng để mở!
-              </Text>
+              <Animated.View style={[styles.readyDot, dotPulseStyle]} />
+              <Text style={styles.readyToOpenText}>Sẵn sàng để mở!</Text>
             </View>
             <Text style={styles.cardDateText}>Tạo ngày {formatDate(box.createdAt)}</Text>
           </View>
-          <Ionicons name="chevron-forward" size={20} color={Colors.textMuted} />
-        </Animated.View>
+          <Ionicons name="chevron-forward" size={20} color={ThemeColors.accent} />
+        </View>
       </Pressable>
     </Animated.View>
   );
 }
 
 // Progress bar với animate fill khi mount
-function AnimatedProgressBar({ progress, color }: { progress: number; color: string }) {
+function AnimatedProgressBar({ progress }: { progress: number }) {
   const width = useSharedValue(0);
 
   useEffect(() => {
@@ -145,7 +168,7 @@ function AnimatedProgressBar({ progress, color }: { progress: number; color: str
 
   return (
     <View style={styles.progressTrack}>
-      <Animated.View style={[styles.progressFill, { backgroundColor: color }, barStyle]} />
+      <Animated.View style={[styles.progressFill, barStyle]} />
     </View>
   );
 }
@@ -174,25 +197,26 @@ function LockedCard({ box, onPress }: { box: Box; onPress: () => void }) {
         onPress={onPress}
         onPressIn={handlePressIn}
         onPressOut={handlePressOut}
-        style={styles.lockedCard}
+        style={[styles.glassCard, styles.lockedCard]}
       >
-        <View style={styles.cardLeft}>
-          <BoxIcon boxType={box.boxType} size={44} showLockOverlay={true} />
-        </View>
-        <View style={styles.cardContent}>
-          <Text style={styles.cardTitle} numberOfLines={1}>
-            {box.title || config.label}
-          </Text>
-          <View style={styles.countdownRow}>
-            <Text style={[styles.countdownNumber, { color: config.color }]}>
-              {daysRemaining}
-            </Text>
-            <Text style={styles.countdownLabel}> ngày nữa</Text>
+        <GlassFill />
+        <View style={styles.cardRow}>
+          <View style={styles.cardLeft}>
+            <BoxIcon boxType={box.boxType} size={44} showLockOverlay={true} />
           </View>
-          <AnimatedProgressBar progress={progress} color={config.color} />
-          <Text style={styles.unlockDateText}>Mở vào {formatDate(box.unlockDate)}</Text>
+          <View style={styles.cardContent}>
+            <Text style={styles.cardTitle} numberOfLines={1}>
+              {box.title || config.label}
+            </Text>
+            <View style={styles.countdownRow}>
+              <Text style={styles.countdownNumber}>{daysRemaining}</Text>
+              <Text style={styles.countdownLabel}> ngày nữa</Text>
+            </View>
+            <AnimatedProgressBar progress={progress} />
+            <Text style={styles.unlockDateText}>Mở vào {formatDate(box.unlockDate)}</Text>
+          </View>
+          <Ionicons name="chevron-forward" size={20} color={ThemeColors.textMuted} />
         </View>
-        <Ionicons name="chevron-forward" size={20} color={Colors.textMuted} />
       </Pressable>
     </Animated.View>
   );
@@ -214,43 +238,48 @@ function OpenedCard({ box, onPress }: { box: Box; onPress: () => void }) {
     scale.value = withSpring(1, { damping: 15, stiffness: 400 });
   };
 
+  const isYes = box.reflectionAnswer === 'yes';
+
   return (
     <Animated.View style={pressStyle}>
       <Pressable
         onPress={onPress}
         onPressIn={handlePressIn}
         onPressOut={handlePressOut}
-        style={styles.openedCard}
+        style={[styles.glassCard, styles.openedCard]}
       >
-        <View style={styles.cardLeft}>
-          <BoxIcon boxType={box.boxType} size={40} showLockOverlay={false} />
-        </View>
-        <View style={styles.cardContent}>
-          <Text style={[styles.cardTitle, styles.openedCardTitle]} numberOfLines={1}>
-            {box.title || config.label}
-          </Text>
-          <Text style={styles.openedDateText}>
-            Đã mở ngày {formatDate(box.openedAt || box.unlockDate)}
-          </Text>
-        </View>
-        {box.reflectionAnswer !== null && box.reflectionAnswer !== undefined && (
-          <View style={[
-            styles.reflectionBadge,
-            { backgroundColor: box.reflectionAnswer === 'yes' ? Colors.successLight : Colors.surfaceSecondary }
-          ]}>
-            <Ionicons
-              name={box.reflectionAnswer === 'yes' ? 'checkmark' : 'close'}
-              size={12}
-              color={box.reflectionAnswer === 'yes' ? Colors.success : Colors.textMuted}
-            />
-            <Text style={[
-              styles.reflectionBadgeText,
-              { color: box.reflectionAnswer === 'yes' ? Colors.success : Colors.textMuted }
-            ]}>
-              {box.reflectionAnswer === 'yes' ? 'Có' : 'Không'}
+        <GlassFill intensity={BlurIntensity.card - 8} />
+        <View style={styles.cardRow}>
+          <View style={styles.cardLeft}>
+            <BoxIcon boxType={box.boxType} size={40} showLockOverlay={false} />
+          </View>
+          <View style={styles.cardContent}>
+            <Text style={[styles.cardTitle, styles.openedCardTitle]} numberOfLines={1}>
+              {box.title || config.label}
+            </Text>
+            <Text style={styles.openedDateText}>
+              Đã mở ngày {formatDate(box.openedAt || box.unlockDate)}
             </Text>
           </View>
-        )}
+          {box.reflectionAnswer !== null && box.reflectionAnswer !== undefined && (
+            <View style={[
+              styles.reflectionBadge,
+              { backgroundColor: isYes ? Colors.successLight : ThemeColors.surfaceGlassStrong },
+            ]}>
+              <Ionicons
+                name={isYes ? 'checkmark' : 'close'}
+                size={12}
+                color={isYes ? Colors.success : Colors.textMuted}
+              />
+              <Text style={[
+                styles.reflectionBadgeText,
+                { color: isYes ? Colors.success : Colors.textMuted },
+              ]}>
+                {isYes ? 'Có' : 'Không'}
+              </Text>
+            </View>
+          )}
+        </View>
       </Pressable>
     </Animated.View>
   );
@@ -280,6 +309,40 @@ function SectionHeader({
   );
 }
 
+// Gradient pill CTA dùng chung
+function PillButton({
+  label,
+  iconName,
+  onPress,
+}: {
+  label: string;
+  iconName: keyof typeof Ionicons.glyphMap;
+  onPress: () => void;
+}) {
+  const scale = useSharedValue(1);
+  const pressStyle = useAnimatedStyle(() => ({ transform: [{ scale: scale.value }] }));
+  return (
+    <Animated.View style={[pressStyle, GlassShadow.cta]}>
+      <Pressable
+        onPress={onPress}
+        onPressIn={() => { scale.value = withSpring(0.97, { damping: 15, stiffness: 400 }); }}
+        onPressOut={() => { scale.value = withSpring(1, { damping: 12, stiffness: 300 }); }}
+      >
+        <LinearGradient
+          colors={ThemeColors.accentGradient}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+          style={styles.pill}
+        >
+          <Ionicons name={iconName} size={20} color={ThemeColors.textOnAccent} />
+          <Text style={styles.pillText}>{label}</Text>
+          <Ionicons name="chevron-forward" size={18} color={ThemeColors.textOnAccent} style={styles.pillChevron} />
+        </LinearGradient>
+      </Pressable>
+    </Animated.View>
+  );
+}
+
 // Empty State
 function EmptyState({ onCreatePress }: { onCreatePress: () => void }) {
   const floatY = useSharedValue(0);
@@ -287,7 +350,7 @@ function EmptyState({ onCreatePress }: { onCreatePress: () => void }) {
   useEffect(() => {
     floatY.value = withRepeat(
       withSequence(
-        withTiming(-4, { duration: 1500, easing: Easing.inOut(Easing.sin) }),
+        withTiming(-6, { duration: 1500, easing: Easing.inOut(Easing.sin) }),
         withTiming(0, { duration: 1500, easing: Easing.inOut(Easing.sin) }),
       ),
       -1,
@@ -303,21 +366,14 @@ function EmptyState({ onCreatePress }: { onCreatePress: () => void }) {
     <View style={styles.emptyContainer}>
       <Animated.View style={[styles.emptyIllustration, floatStyle]}>
         <View style={styles.emptyBoxOuter}>
-          <Ionicons name="cube-outline" size={80} color={Colors.borderMedium} />
+          <Ionicons name="cube-outline" size={80} color={ThemeColors.accent} />
         </View>
       </Animated.View>
       <Text style={styles.emptyTitle}>Chưa có hộp nào</Text>
       <Text style={styles.emptyDescription}>
         Tạo hộp đầu tiên của bạn và gửi một thông điệp cho chính mình trong tương lai.
       </Text>
-      <TouchableOpacity
-        style={styles.emptyButton}
-        onPress={onCreatePress}
-        activeOpacity={0.85}
-      >
-        <Ionicons name="add" size={20} color={Colors.textOnColor} />
-        <Text style={styles.emptyButtonText}>Tạo hộp đầu tiên</Text>
-      </TouchableOpacity>
+      <PillButton label="Tạo hộp đầu tiên" iconName="add" onPress={onCreatePress} />
     </View>
   );
 }
@@ -372,7 +428,9 @@ const searchStyles = StyleSheet.create({
   container: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: Colors.surfaceSecondary,
+    backgroundColor: ThemeColors.inputBg,
+    borderWidth: 1,
+    borderColor: ThemeColors.borderGlass,
     borderRadius: Radius.full,
     paddingHorizontal: Spacing[3],
     paddingVertical: Spacing[2],
@@ -430,20 +488,20 @@ const chipStyles = StyleSheet.create({
     paddingHorizontal: Spacing[4],
     paddingVertical: Spacing[2],
     borderRadius: Radius.full,
-    backgroundColor: Colors.surfaceSecondary,
+    backgroundColor: ThemeColors.surfaceGlass,
     borderWidth: 1,
-    borderColor: Colors.borderLight,
+    borderColor: ThemeColors.borderGlass,
   },
   chipActive: {
-    backgroundColor: Colors.primaryLight,
-    borderColor: Colors.primary,
+    backgroundColor: ThemeColors.accentSoft,
+    borderColor: ThemeColors.accent,
   },
   label: {
     fontSize: FontSize.sm,
     fontWeight: FontWeight.medium,
     color: Colors.textSecondary,
   },
-  labelActive: { color: Colors.primary },
+  labelActive: { color: ThemeColors.accent },
 });
 
 // ─── Main Home Screen ─────────────────────────────────────────────────────────
@@ -504,10 +562,6 @@ export default function HomeScreen() {
 
   // Header elevation when scrolled
   const scrollY = useSharedValue(0);
-  const headerStyle = useAnimatedStyle(() => ({
-    shadowOpacity: interpolate(scrollY.value, [0, 24], [0, 0.12]),
-    elevation: interpolate(scrollY.value, [0, 24], [0, 4]),
-  }));
 
   // FAB hide/show on scroll direction
   const lastScrollY = useSharedValue(0);
@@ -566,18 +620,23 @@ export default function HomeScreen() {
   }, [router]);
 
   return (
-    <View style={[styles.root, { backgroundColor: Colors.background }]}>
+    <View style={styles.root}>
+      <StatusBar style="light" />
+
+      {/* ── Ambient glow backdrop (chiều sâu cho glass) ── */}
+      <LinearGradient
+        colors={['rgba(242,107,31,0.14)', 'rgba(242,107,31,0.03)', 'rgba(14,14,16,0)']}
+        start={{ x: 0.15, y: 0 }}
+        end={{ x: 0.9, y: 0.55 }}
+        style={styles.ambient}
+        pointerEvents="none"
+      />
+
       {/* ── Header ── */}
-      <Animated.View
-        style={[
-          styles.header,
-          headerStyle,
-          { paddingTop: insets.top + Spacing[2] },
-        ]}
-      >
+      <View style={[styles.header, { paddingTop: insets.top + Spacing[2] }]}>
         <View style={styles.headerLeft}>
           <View style={styles.headerLogoCircle}>
-            <Ionicons name="cube" size={18} color={Colors.primary} />
+            <Ionicons name="cube" size={18} color={ThemeColors.accent} />
           </View>
           <Text style={styles.headerTitle}>Hộp của bạn</Text>
         </View>
@@ -597,7 +656,7 @@ export default function HomeScreen() {
             <Ionicons name="settings-outline" size={22} color={Colors.textPrimary} />
           </TouchableOpacity>
         </View>
-      </Animated.View>
+      </View>
 
       {/* ── Search bar (F-17) ── */}
       {showSearch && (
@@ -618,7 +677,7 @@ export default function HomeScreen() {
         <EmptyState onCreatePress={handleFABPress} />
       ) : noResults ? (
         <View style={styles.noResultsContainer}>
-          <Ionicons name="search" size={48} color={Colors.borderMedium} />
+          <Ionicons name="search" size={48} color={ThemeColors.textMuted} />
           <Text style={styles.noResultsText}>Không tìm thấy hộp nào</Text>
         </View>
       ) : (
@@ -687,7 +746,7 @@ export default function HomeScreen() {
               {openedBoxes.length > 3 && (
                 <TouchableOpacity style={styles.seeMoreButton} activeOpacity={0.7}>
                   <Text style={styles.seeMoreText}>Xem thêm {openedBoxes.length - 3} hộp</Text>
-                  <Ionicons name="chevron-down" size={16} color={Colors.primary} />
+                  <Ionicons name="chevron-down" size={16} color={ThemeColors.accent} />
                 </TouchableOpacity>
               )}
             </View>
@@ -700,9 +759,8 @@ export default function HomeScreen() {
         style={[
           styles.fab,
           fabPressStyle,
-          {
-            bottom: insets.bottom + FAB_BOTTOM_OFFSET,
-          },
+          GlassShadow.cta,
+          { bottom: insets.bottom + FAB_BOTTOM_OFFSET },
         ]}
       >
         <Pressable
@@ -711,7 +769,14 @@ export default function HomeScreen() {
           onPressOut={handleFABPressOut}
           style={styles.fabInner}
         >
-          <Ionicons name="add" size={28} color={Colors.textOnColor} />
+          <LinearGradient
+            colors={ThemeColors.accentGradient}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+            style={styles.fabGradient}
+          >
+            <Ionicons name="add" size={28} color={ThemeColors.textOnAccent} />
+          </LinearGradient>
         </Pressable>
       </Animated.View>
     </View>
@@ -723,6 +788,14 @@ export default function HomeScreen() {
 const styles = StyleSheet.create({
   root: {
     flex: 1,
+    backgroundColor: ThemeColors.background,
+  },
+  ambient: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    height: 360,
   },
 
   // Header
@@ -732,10 +805,6 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     paddingHorizontal: Spacing[4],
     paddingBottom: Spacing[3],
-    backgroundColor: Colors.background,
-    shadowColor: Colors.shadow,
-    shadowOffset: { width: 0, height: 2 },
-    shadowRadius: 8,
     zIndex: 10,
   },
   headerLeft: {
@@ -747,7 +816,7 @@ const styles = StyleSheet.create({
     width: 32,
     height: 32,
     borderRadius: 10,
-    backgroundColor: Colors.primaryLight,
+    backgroundColor: ThemeColors.accentSoft,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -803,22 +872,39 @@ const styles = StyleSheet.create({
   sectionBadgeText: {
     fontSize: FontSize.xs,
     fontWeight: FontWeight.bold,
-    color: Colors.textOnColor,
+    color: ThemeColors.textOnAccent,
   },
 
-  // Ready-to-open card
-  readyCard: {
-    backgroundColor: Colors.surface,
-    borderRadius: Radius.lg,
-    borderLeftWidth: 4,
+  // Glass card base
+  glassCard: {
+    borderRadius: Radius.xl,
+    borderWidth: 1,
+    borderColor: ThemeColors.borderGlass,
+    overflow: 'hidden',
     marginBottom: Spacing[3],
-    ...Shadow.md,
   },
-  readyCardInner: {
+  glassTint: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: ThemeColors.surfaceGlass,
+  },
+  cardRow: {
     flexDirection: 'row',
     alignItems: 'center',
     padding: Spacing[4],
     gap: Spacing[3],
+  },
+
+  // Ready-to-open card
+  readyShadow: {
+    ...Shadow.md,
+    shadowColor: ThemeColors.accent,
+    shadowOpacity: 0.18,
+    borderRadius: Radius.xl,
+  },
+  readyCard: {
+    borderColor: 'rgba(242,107,31,0.45)',
+    borderLeftWidth: 3,
+    borderLeftColor: ThemeColors.accent,
   },
   readyToOpenRow: {
     flexDirection: 'row',
@@ -827,13 +913,15 @@ const styles = StyleSheet.create({
     marginTop: 2,
   },
   readyDot: {
-    width: 6,
-    height: 6,
-    borderRadius: 3,
+    width: 7,
+    height: 7,
+    borderRadius: 4,
+    backgroundColor: ThemeColors.accent,
   },
   readyToOpenText: {
     fontSize: FontSize.md,
     fontWeight: FontWeight.semiBold,
+    color: ThemeColors.accent,
   },
 
   // Common card parts
@@ -857,18 +945,7 @@ const styles = StyleSheet.create({
   },
 
   // Locked card
-  lockedCard: {
-    backgroundColor: Colors.surface,
-    borderRadius: Radius.lg,
-    padding: Spacing[4],
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: Spacing[3],
-    marginBottom: Spacing[3],
-    ...Shadow.sm,
-    borderWidth: 1,
-    borderColor: Colors.borderLight,
-  },
+  lockedCard: {},
   countdownRow: {
     flexDirection: 'row',
     alignItems: 'baseline',
@@ -877,6 +954,7 @@ const styles = StyleSheet.create({
   countdownNumber: {
     fontSize: FontSize['3xl'],
     fontWeight: FontWeight.bold,
+    color: ThemeColors.accent,
   },
   countdownLabel: {
     fontSize: FontSize.md,
@@ -884,8 +962,8 @@ const styles = StyleSheet.create({
     color: Colors.textSecondary,
   },
   progressTrack: {
-    height: 3,
-    backgroundColor: Colors.progressTrack,
+    height: 4,
+    backgroundColor: ThemeColors.trackOff,
     borderRadius: Radius.full,
     overflow: 'hidden',
     marginTop: Spacing[2],
@@ -893,6 +971,7 @@ const styles = StyleSheet.create({
   progressFill: {
     height: '100%',
     borderRadius: Radius.full,
+    backgroundColor: ThemeColors.accent,
   },
   unlockDateText: {
     fontSize: FontSize.sm,
@@ -902,16 +981,7 @@ const styles = StyleSheet.create({
 
   // Opened card
   openedCard: {
-    backgroundColor: Colors.surface,
-    borderRadius: Radius.lg,
-    padding: Spacing[3],
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: Spacing[3],
-    marginBottom: Spacing[2],
-    opacity: 0.75,
-    borderWidth: 1,
-    borderColor: Colors.borderLight,
+    opacity: 0.9,
   },
   openedCardTitle: {
     fontSize: FontSize.lg,
@@ -946,7 +1016,28 @@ const styles = StyleSheet.create({
   seeMoreText: {
     fontSize: FontSize.md,
     fontWeight: FontWeight.medium,
-    color: Colors.primary,
+    color: ThemeColors.accent,
+  },
+
+  // Gradient pill CTA
+  pill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: Spacing[2],
+    paddingHorizontal: Spacing[6],
+    paddingVertical: Spacing[4],
+    borderRadius: Radius.full,
+  },
+  pillText: {
+    fontSize: FontSize.xl,
+    fontWeight: FontWeight.semiBold,
+    color: ThemeColors.textOnAccent,
+    letterSpacing: 0.2,
+  },
+  pillChevron: {
+    marginLeft: -2,
+    opacity: 0.85,
   },
 
   // FAB
@@ -956,13 +1047,16 @@ const styles = StyleSheet.create({
     width: FAB_SIZE,
     height: FAB_SIZE,
     borderRadius: FAB_SIZE / 2,
-    backgroundColor: Colors.primary,
-    ...Shadow.fab,
   },
   fabInner: {
     width: '100%',
     height: '100%',
     borderRadius: FAB_SIZE / 2,
+    overflow: 'hidden',
+  },
+  fabGradient: {
+    width: '100%',
+    height: '100%',
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -996,7 +1090,9 @@ const styles = StyleSheet.create({
     width: 120,
     height: 120,
     borderRadius: Radius.xl,
-    backgroundColor: Colors.surfaceSecondary,
+    backgroundColor: ThemeColors.accentSoft,
+    borderWidth: 1,
+    borderColor: ThemeColors.borderGlass,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -1011,21 +1107,5 @@ const styles = StyleSheet.create({
     color: Colors.textSecondary,
     textAlign: 'center',
     lineHeight: FontSize.lg * 1.6,
-  },
-  emptyButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: Spacing[2],
-    backgroundColor: Colors.primary,
-    paddingHorizontal: Spacing[6],
-    paddingVertical: Spacing[3],
-    borderRadius: Radius.full,
-    ...Shadow.md,
-    marginTop: Spacing[2],
-  },
-  emptyButtonText: {
-    fontSize: FontSize.xl,
-    fontWeight: FontWeight.semiBold,
-    color: Colors.textOnColor,
   },
 });
