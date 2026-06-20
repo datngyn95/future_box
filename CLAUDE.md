@@ -143,5 +143,6 @@ function getBoxStatus(box, now): BoxStatus
 - **Tạo hộp** là 1 transaction: INSERT box + reflection_question + notification_schedule trong `db.withTransactionAsync`
 - **Ẩn nội dung hộp khóa**: chỉ ẩn ở tầng UI, không mã hóa DB (theo Q4 PRD)
 - **Xóa hộp**: hard delete + CASCADE + hủy notification + xóa file ảnh
-- `unlock_date` tối thiểu = today + 1 tháng (theo Q3 PRD); preset: 1T, 3T, 6T, 1 năm
+- `unlock_date` tối thiểu = today + 1 ngày (theo Q3 PRD, cập nhật 2026-06-20); chặn chọn hôm nay/quá khứ. Preset: 1 ngày, 2 ngày, 1 tháng, 3 tháng, 6 tháng, 1 năm + "Tùy chỉnh". Validate 2 tầng: UI (`app/create-box/[type].tsx`) + data (`validateUnlockDate` trong `src/db/boxRepository.ts`)
+- **Mở hộp** chỉ khi `now >= unlock_date`; guard ở cả UI (`getBoxStatus`) lẫn tầng data (`openBox` dùng SQL `unlock_date <= now AND is_opened = 0`). Màn `box/[id]/detail.tsx` early-return `null` khi `status !== 'opened'` để không lộ content/ảnh/lời nhắn/câu hỏi của hộp khóa
 - Không cho sửa nội dung sau khi khóa; chỉ cho xóa (theo Q7 PRD)
