@@ -94,7 +94,7 @@ Ký hiệu phụ thuộc: `F-x` nghĩa là tính năng phụ thuộc vào F-x.
 | ID | Tính năng | Mô tả ngắn | Phụ thuộc |
 |----|-----------|------------|-----------|
 | **F-01** | Tạo hộp thời gian | Tạo hộp với tiêu đề, nội dung text, chọn loại hộp (Message/Goal/Memory/Decision), ngày mở. | - |
-| **F-02** | Chọn ngày mở (unlock date) | Date picker, chỉ cho phép ngày trong tương lai, tối thiểu 1 tháng; preset nhanh: 1 tháng, 3 tháng, 6 tháng, 1 năm. | F-01 |
+| **F-02** | Chọn ngày mở (unlock date) | Date picker chỉ cho phép chọn ngày từ ngày mai trở đi. Unlock date tối thiểu là 1 ngày sau ngày tạo hộp. Có preset nhanh: 1 ngày, 2 ngày, 1 tháng, 3 tháng, 6 tháng, 1 năm. | F-01 |
 | **F-03** | Khóa hộp & ẩn nội dung | Sau khi tạo, nội dung bị ẩn hoàn toàn cho đến ngày mở. Đây là core feature. | F-01, F-02 |
 | **F-04** | Câu hỏi phản hồi (reflection question) | Khi tạo hộp, tùy chọn thêm 1 câu hỏi Yes/No (vd "Kết quả tốt chứ?", "Đã giảm cân chưa?", "Quyết định đúng chứ?"). | F-01 |
 | **F-05** | Danh sách hộp (Locked/Open/Opened) | Màn hình chính hiển thị hộp theo nhóm: Đang khóa, Sẵn sàng mở, Đã mở. Có đếm ngược thời gian. | F-03 |
@@ -167,10 +167,10 @@ Các tính năng V1 tập trung vào việc tăng **tò mò, mong chờ, cảm x
 - **AC-01.4:** Khi chưa khóa, người dùng có thể thoát form và được hỏi xác nhận hủy nếu đã nhập dữ liệu (tránh mất dữ liệu).
 
 ### F-02 - Chọn ngày mở
-- **AC-02.1:** Given form tạo hộp, When mở date picker, Then chỉ cho phép chọn ngày **tối thiểu sau ngày tạo 1 tháng**.
-- **AC-02.2:** Có các preset nhanh: **1 tháng, 3 tháng, 6 tháng, 1 năm** và "Tùy chỉnh".
-- **AC-02.3:** When chọn ngày trong quá khứ, Then nút "Khóa hộp" bị vô hiệu hóa kèm thông báo.
-- **AC-02.4:** Ngày mở hiển thị rõ ràng (vd "Sẽ mở vào 18/06/2026") trước khi xác nhận khóa.
+- **AC-02.1:** Chỉ cho phép chọn ngày mở từ ngày mai trở đi. Không cho chọn hôm nay hoặc ngày trong quá khứ.
+- **AC-02.2:** Có các preset nhanh: 1 ngày, 2 ngày, 1 tháng, 3 tháng, 6 tháng, 1 năm và "Tùy chỉnh".
+- **AC-02.3:** When chọn ngày trong quá khứ, Then nút "Khóa hộp" bị vô hiệu hóa kèm thông báo. Nếu unlockDate < createdAt + 1 ngày, app không cho tạo hộp và hiển thị lỗi rõ ràng.
+- **AC-02.4:** Ngày mở hiển thị rõ ràng (vd "Sẽ mở vào 18/06/2026") trước khi xác nhận khóa. Khi chọn preset 1 ngày, unlockDate = ngày tạo + 1 ngày. Khi chọn preset 2 ngày, unlockDate = ngày tạo + 2 ngày.
 
 ### F-03 - Khóa hộp & ẩn nội dung
 - **AC-03.1:** Given hộp đã khóa và chưa đến ngày mở, When người dùng xem hộp trong danh sách hoặc chi tiết, Then **không hiển thị bất kỳ nội dung/ảnh nào**; chỉ hiển thị metadata: tiêu đề (tùy chọn), loại hộp, ngày mở, đếm ngược.
@@ -340,7 +340,7 @@ Các tính năng V1 tập trung vào việc tăng **tò mò, mong chờ, cảm x
 |---|---------|------------|
 | **Q1** | MVP offline-first, không tài khoản — đổi máy mất hộp? | ✅ **Chấp nhận.** MVP không cần tài khoản, mất dữ liệu khi đổi máy là acceptable. F-26 giữ ở Won't have. |
 | **Q2** | Gửi hộp cho người khác? | Giữ Won't have (dùng giả định mặc định). |
-| **Q3** | Khoảng cách tối thiểu tạo → mở? | ✅ **Tối thiểu 1 tháng.** Chỉ chọn ngày (không chọn giờ). Preset: 1 tháng, 3 tháng, 6 tháng, 1 năm. |
+| **Q3** | Khoảng cách tối thiểu tạo → mở? | ✅ **Tối thiểu 1 ngày.** Chỉ chọn ngày (không chọn giờ). Preset: 1 ngày, 2 ngày, 1 tháng, 3 tháng, 6 tháng, 1 năm. |
 | **Q4** | Mức độ khóa? | ✅ **Khóa ở tầng UI** — ẩn nội dung trên giao diện, không cần mã hóa. NFR-S1 bỏ yêu cầu encryption at rest. |
 | **Q5** | Phiên bản OS tối thiểu? | Dùng giả định: iOS 15+, Android 8+ (API 26+). |
 | **Q6** | Tech stack? | Để agent-ba đề xuất ở giai đoạn Design. |
@@ -680,7 +680,7 @@ Rule:
 - Cập nhật version PRD lên 1.2.
 - Sửa NFR-S1: MVP không yêu cầu encryption at rest.
 - Sửa F-15: chỉ cho xóa hộp đã khóa, không cho sửa.
-- Sửa preset ngày mở theo Q3: 1 tháng, 3 tháng, 6 tháng, 1 năm.
+- Sửa preset ngày mở theo Q3: 1 ngày, 2 ngày, 1 tháng, 3 tháng, 6 tháng, 1 năm.
 - Đảm bảo `openBox()` kiểm tra ngày mở ở tầng business logic/data.
 
 ### Sprint 1 — Core Lock & QA
@@ -753,7 +753,8 @@ Rule:
 |---------|------|-------------------|
 | 1.1 | 2026-06-11 | Xác nhận PRD MVP: offline-first, single-device, tạo hộp, khóa, mở, reflection, notification, ảnh, app lock. |
 | 1.2 | 2026-06-19 | Bổ sung V1 — Curiosity & Engagement: Mystery Teaser, Curiosity Notification, Prediction Before Opening, Opening Ritual, Post-open Reflection Note, Create Next Box CTA, Personal Stats, New Box Types. Đồng thời chỉnh NFR-S1, F-15 và preset ngày mở để thống nhất với quyết định đã xác nhận. |
-
+- Cập nhật unlock date tối thiểu từ 1 tháng thành 1 ngày.
+- Bổ sung preset mở hộp: 1 ngày và 2 ngày.
 ---
 
 *Hết tài liệu PRD v1.2. Trạng thái: **MVP confirmed ✓ → V1 Curiosity & Engagement planning**.*
