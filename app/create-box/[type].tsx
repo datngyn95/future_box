@@ -45,15 +45,24 @@ const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
 interface PresetOption {
   label: string;
-  months: number;
+  value: number;
+  unit: 'day' | 'month';
 }
 
 const PRESET_OPTIONS: PresetOption[] = [
-  { label: '1 tháng', months: 1 },
-  { label: '3 tháng', months: 3 },
-  { label: '6 tháng', months: 6 },
-  { label: '1 năm', months: 12 },
+  { label: '1 ngày', value: 1, unit: 'day' },
+  { label: '2 ngày', value: 2, unit: 'day' },
+  { label: '1 tháng', value: 1, unit: 'month' },
+  { label: '3 tháng', value: 3, unit: 'month' },
+  { label: '6 tháng', value: 6, unit: 'month' },
+  { label: '1 năm', value: 12, unit: 'month' },
 ];
+
+function addDays(date: Date, days: number): Date {
+  const d = new Date(date);
+  d.setDate(d.getDate() + days);
+  return d;
+}
 
 function addMonths(date: Date, months: number): Date {
   const d = new Date(date);
@@ -61,11 +70,11 @@ function addMonths(date: Date, months: number): Date {
   return d;
 }
 
-/** Ngày tối thiểu = today + 1 tháng (AC-02.1, Q3) */
+/** Ngày tối thiểu = today + 1 ngày (AC-02.1, Q3) */
 function getMinDate(): Date {
   const min = new Date();
-  min.setMonth(min.getMonth() + 1);
   min.setHours(0, 0, 0, 0);
+  min.setDate(min.getDate() + 1);
   return min;
 }
 
@@ -290,6 +299,7 @@ export default function CreateBoxFormScreen() {
   // Validation errors
   const [contentError, setContentError] = useState(false);
   const [dateError, setDateError] = useState(false);
+  const [dateErrorMessage, setDateErrorMessage] = useState('');
 
   // Refs for focus management
   const contentInputRef = useRef<TextInput>(null);
@@ -330,10 +340,15 @@ export default function CreateBoxFormScreen() {
 
   const handlePresetSelect = (index: number) => {
     setSelectedPreset(index);
-    const date = addMonths(new Date(), PRESET_OPTIONS[index].months);
+    const preset = PRESET_OPTIONS[index];
+    const date =
+      preset.unit === 'day'
+        ? addDays(new Date(), preset.value)
+        : addMonths(new Date(), preset.value);
     date.setHours(0, 0, 0, 0);
     setUnlockDate(date);
     setDateError(false);
+    setDateErrorMessage('');
     // Reset custom picker nếu đang hiện
     setShowDatePicker(false);
     dateFadeIn.value = 0;
@@ -344,6 +359,8 @@ export default function CreateBoxFormScreen() {
     setSelectedPreset(null);
     setUnlockDate(null);
     setShowDatePicker(false);
+    setDateError(false);
+    setDateErrorMessage('');
     dateFadeIn.value = withTiming(0, { duration: 150 });
   };
 
@@ -393,16 +410,20 @@ export default function CreateBoxFormScreen() {
 
     if (selectedDate) {
       const minDate = getMinDate();
-      if (selectedDate < minDate) {
+      const pickedDate = new Date(selectedDate);
+      pickedDate.setHours(0, 0, 0, 0);
+      if (pickedDate < minDate) {
         Alert.alert(
           'Ngày không hợp lệ',
-          'Ngày mở phải tối thiểu 1 tháng kể từ hôm nay.',
+          'Ngày mở phải tối thiểu 1 ngày kể từ hôm nay.',
         );
+        setDateError(true);
+        setDateErrorMessage('Ngày mở phải tối thiểu 1 ngày kể từ hôm nay');
         return;
       }
-      selectedDate.setHours(0, 0, 0, 0);
-      setUnlockDate(selectedDate);
+      setUnlockDate(pickedDate);
       setDateError(false);
+      setDateErrorMessage('');
       dateFadeIn.value = 0;
       dateFadeIn.value = withTiming(1, { duration: 200 });
     }
@@ -439,9 +460,15 @@ export default function CreateBoxFormScreen() {
     }
     if (!unlockDate) {
       setDateError(true);
+      setDateErrorMessage('Vui lòng chọn ngày mở');
+      valid = false;
+    } else if (new Date(unlockDate).setHours(0, 0, 0, 0) < getMinDate().getTime()) {
+      setDateError(true);
+      setDateErrorMessage('Ngày mở phải tối thiểu 1 ngày kể từ hôm nay');
       valid = false;
     } else {
       setDateError(false);
+      setDateErrorMessage('');
     }
     return valid;
   };
@@ -718,7 +745,7 @@ export default function CreateBoxFormScreen() {
 
           {/* Date error */}
           {dateError && (
-            <Text style={styles.errorText}>Vui lòng chọn ngày mở</Text>
+            <Text style={styles.errorText}>{dateErrorMessage}</Text>
           )}
         </ScrollView>
 

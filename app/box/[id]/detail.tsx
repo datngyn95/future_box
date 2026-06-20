@@ -340,16 +340,8 @@ export default function OpenedBoxDetailScreen() {
     setShowAnswerButtons(true);
   }, []);
 
-  if (!box || !config) {
-    return (
-      <View style={[styles.root, styles.center]}>
-        <Text style={styles.errorText}>Không tìm thấy hộp</Text>
-      </View>
-    );
-  }
-
-  if (status !== 'opened') {
-    return <View style={[styles.root, { backgroundColor: Colors.background }]} />;
+  if (!box || !config || status !== 'opened') {
+    return null;
   }
 
   const displayTitle = box.title || config.label;

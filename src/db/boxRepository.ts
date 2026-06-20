@@ -133,19 +133,18 @@ async function deleteImageFile(imagePath: string): Promise<void> {
 // ─── Validation ───────────────────────────────────────────────────────────────
 
 /**
- * Kiểm tra unlockDate >= today + 1 tháng (AC-02.1, Q3).
+ * Kiểm tra unlockDate >= today + 1 ngày (AC-02.1, Q3).
  * Tính theo ngày local, không phải millisecond chính xác.
  */
 function validateUnlockDate(unlockDate: string): void {
   const unlock = new Date(unlockDate);
   const minDate = new Date();
-  minDate.setMonth(minDate.getMonth() + 1);
-  // Reset về 00:00 local để so sánh theo ngày
   minDate.setHours(0, 0, 0, 0);
+  minDate.setDate(minDate.getDate() + 1);
   unlock.setHours(0, 0, 0, 0);
 
   if (unlock < minDate) {
-    throw new Error('Ngày mở phải tối thiểu 1 tháng kể từ hôm nay');
+    throw new Error('Ngày mở phải tối thiểu 1 ngày kể từ hôm nay');
   }
 }
 
